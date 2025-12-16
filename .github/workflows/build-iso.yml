@@ -18,22 +18,41 @@ jobs:
             -v "${PWD}:/build" \
             -v "${PWD}/out:/root/lurin-iso" \
             -w /build \
+            -e OUTPUT="/root/lurin-iso" \
             archlinux:latest \
             bash -lc '
               set -e
+              echo "📦 Installing dependencies..."
               pacman -Sy --needed --noconfirm archiso imagemagick sox git
 
-              echo "Enabling multilib in /etc/pacman.conf..."
+              echo "🔧 Enabling multilib..."
               sed -i "s/#\\[multilib\\]/[multilib]/" /etc/pacman.conf || true
               sed -i "s|#Include = /etc/pacman.d/mirrorlist|Include = /etc/pacman.d/mirrorlist|" /etc/pacman.conf || true
               pacman -Sy
 
+              echo "🔨 Building ISO..."
+              cd /build
               chmod +x ./build-iso.sh
+              
+              # Переопределяем OUTPUT если нужно
+              export OUTPUT="/root/lurin-iso"
+              
               ./build-iso.sh
+              
+              echo "✅ Build finished. Checking output..."
+              ls -lah /root/lurin-iso/ || echo "⚠️  /root/lurin-iso is empty"
+              find /root -name "*.iso" 2>/dev/null || echo "⚠️  No ISO found in /root"
             '
+
+      - name: List output directory
+        run: |
+          echo "📁 Contents of out/ directory:"
+          ls -lah out/ || echo "⚠️  out/ directory is empty or doesn't exist"
+          find . -name "*.iso" -type f || echo "⚠️  No ISO files found in workspace"
 
       - name: Upload ISO artifact
         uses: actions/upload-artifact@v4
         with:
           name: lurin-os-iso
-          path: ~/lurin-iso/*.iso
+          path: out/*.iso
+          if-no-files-found: warn
