@@ -7,7 +7,7 @@ set -e
 PROJECT_DIR="$(cd "$(dirname "$0")" && pwd)"
 WORKDIR="/tmp/lurin-build"
 # Куда складывать готовый ISO (совпадает с README/документацией)
-OUTPUT="$HOME/lurin-iso"
+OUTPUT="${OUTPUT:-$HOME/lurin-iso}"
 ARCHISO_TMP="/tmp/archiso-tmp"
 
 # ===== CHECK ROOT =====
