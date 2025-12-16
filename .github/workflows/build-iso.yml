@@ -1,0 +1,36 @@
+name: Build Lurin OS ISO
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  build-iso:
+    runs-on: ubuntu-latest
+
+    container:
+      image: archlinux:latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Install deps
+        run: |
+          pacman -Sy --needed --noconfirm archiso imagemagick sox git
+
+      - name: Enable multilib in profile
+        run: |
+          sed -i 's/#\[multilib\]/[multilib]/' /etc/pacman.conf || true
+          sed -i 's|#Include = /etc/pacman.d/mirrorlist|Include = /etc/pacman.d/mirrorlist|' /etc/pacman.conf || true
+          pacman -Sy
+
+      - name: Build ISO
+        run: |
+          chmod +x ./build-iso.sh
+          ./build-iso.sh
+
+      - name: Upload ISO artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: lurin-os-iso
+          path: ~/lurin-iso/*.iso
