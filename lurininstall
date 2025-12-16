@@ -1,0 +1,464 @@
+#!/bin/bash
+# Lurin OS Installer
+# Gaming-Ready Linux Distribution
+
+set -e
+
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+BLUE='\033[0;34m'
+CYAN='\033[0;36m'
+YELLOW='\033[1;33m'
+PURPLE='\033[0;35m'
+NC='\033[0m'
+BOLD='\033[1m'
+
+show_logo() {
+    clear
+    echo -e "${BLUE}${BOLD}"
+    cat << "EOF"
+    ╔═══════════════════════════════════════════════════╗
+    ║                                                   ║
+    ║         ██╗     ██╗   ██╗██████╗ ██╗███╗   ██╗  ║
+    ║         ██║     ██║   ██║██╔══██╗██║████╗  ██║  ║
+    ║         ██║     ██║   ██║██████╔╝██║██╔██╗ ██║  ║
+    ║         ██║     ██║   ██║██╔══██╗██║██║╚██╗██║  ║
+    ║         ███████╗╚██████╔╝██║  ██║██║██║ ╚████║  ║
+    ║         ╚══════╝ ╚═════╝ ╚═╝  ╚═╝╚═╝╚═╝  ╚═══╝  ║
+    ║                                                   ║
+    ║              ██████╗ ███████╗                     ║
+    ║             ██╔═══██╗██╔════╝                     ║
+    ║             ██║   ██║███████╗                     ║
+    ║             ██║   ██║╚════██║                     ║
+    ║             ╚██████╔╝███████║                     ║
+    ║              ╚═════╝ ╚══════╝                     ║
+    ║                                                   ║
+    ║            special edition made by hackowv        ║
+    ╚═══════════════════════════════════════════════════╝
+EOF
+    echo -e "${NC}\n"
+}
+
+play_sound() {
+    if command -v paplay &> /dev/null && [ -f "/usr/share/sounds/lurin/$1.wav" ]; then
+        paplay "/usr/share/sounds/lurin/$1.wav" 2>/dev/null &
+    fi
+}
+
+check_root() {
+    if [ "$EUID" -ne 0 ]; then 
+        echo -e "${RED}Error: Run with root privileges (sudo lurininstall)${NC}"
+        exit 1
+    fi
+}
+
+check_internet() {
+    echo -e "${CYAN}⏳ Checking internet connection...${NC}"
+    if ping -c 1 archlinux.org &> /dev/null; then
+        echo -e "${GREEN}✓ Connected!${NC}\n"
+        play_sound "success"
+    else
+        echo -e "${RED}✗ No internet connection!${NC}"
+        play_sound "error"
+        exit 1
+    fi
+}
+
+select_disk() {
+    echo -e "${YELLOW}${BOLD}💾 Available disks:${NC}\n"
+    lsblk -d -o NAME,SIZE,TYPE,MODEL | grep disk | nl -w2 -s') '
+    echo -e "\n${CYAN}Select disk number for installation:${NC} "
+    read -r disk_num
+    DISK="/dev/$(lsblk -d -n -o NAME,TYPE | grep disk | sed -n "${disk_num}p" | awk '{print $1}')"
+    
+    echo -e "\n${RED}${BOLD}⚠️  WARNING!${NC} All data on ${BOLD}${DISK}${NC} will be erased!"
+    echo -e "${CYAN}Continue? (yes/no):${NC} "
+    read -r confirm
+    if [ "$confirm" != "yes" ]; then
+        echo -e "${YELLOW}Installation cancelled${NC}"
+        exit 0
+    fi
+}
+
+get_user_info() {
+    echo -e "\n${CYAN}👤 Username:${NC} "
+    read -r USERNAME
+    
+    echo -e "${CYAN}💻 Hostname:${NC} "
+    read -r HOSTNAME
+    
+    echo -e "\n${CYAN}🔒 Root password:${NC}"
+    while true; do
+        read -s -p "Enter: " pass1
+        echo
+        read -s -p "Repeat: " pass2
+        echo
+        if [ "$pass1" = "$pass2" ]; then
+            ROOT_PASSWORD="$pass1"
+            break
+        else
+            echo -e "${RED}Passwords don't match!${NC}\n"
+        fi
+    done
+    
+    echo -e "\n${CYAN}🔒 Password for ${USERNAME}:${NC}"
+    while true; do
+        read -s -p "Enter: " pass1
+        echo
+        read -s -p "Repeat: " pass2
+        echo
+        if [ "$pass1" = "$pass2" ]; then
+            USER_PASSWORD="$pass1"
+            break
+        else
+            echo -e "${RED}Passwords don't match!${NC}\n"
+        fi
+    done
+}
+
+select_desktop() {
+    echo -e "\n${YELLOW}${BOLD}🎮 Select desktop environment:${NC}\n"
+    echo -e "${CYAN}1)${NC} KDE Plasma    ${PURPLE}(Best for gaming, beautiful)${NC}"
+    echo -e "${CYAN}2)${NC} GNOME         ${PURPLE}(Simple and elegant)${NC}"
+    echo -e "${CYAN}3)${NC} XFCE          ${PURPLE}(Lightweight and fast)${NC}"
+    echo -e "${CYAN}4)${NC} Hyprland      ${PURPLE}(Modern Wayland tiling WM)${NC}"
+    echo -e "\n${CYAN}Choice (1-4):${NC} "
+    read -r choice
+    
+    case $choice in
+        1) DESKTOP="plasma" ;;
+        2) DESKTOP="gnome" ;;
+        3) DESKTOP="xfce" ;;
+        4) DESKTOP="hyprland" ;;
+        *) DESKTOP="plasma" ;;
+    esac
+}
+
+partition_disk() {
+    echo -e "\n${CYAN}💾 Partitioning disk...${NC}"
+    sgdisk -Z "$DISK" &>/dev/null
+    sgdisk -n 1:0:+1G -t 1:ef00 "$DISK" &>/dev/null
+    sgdisk -n 2:0:0 -t 2:8300 "$DISK" &>/dev/null
+    partprobe "$DISK"
+    sleep 2
+    
+    if [[ "$DISK" == *"nvme"* ]]; then
+        EFI="${DISK}p1"
+        ROOT="${DISK}p2"
+    else
+        EFI="${DISK}1"
+        ROOT="${DISK}2"
+    fi
+    echo -e "${GREEN}✓ Done${NC}"
+    play_sound "tick"
+}
+
+format_partitions() {
+    echo -e "${CYAN}📝 Formatting partitions...${NC}"
+    mkfs.fat -F32 "$EFI" &>/dev/null
+    mkfs.ext4 -F "$ROOT" &>/dev/null
+    echo -e "${GREEN}✓ Done${NC}"
+    play_sound "tick"
+}
+
+mount_partitions() {
+    echo -e "${CYAN}🔗 Mounting partitions...${NC}"
+    mount "$ROOT" /mnt
+    mkdir -p /mnt/boot
+    mount "$EFI" /mnt/boot
+    echo -e "${GREEN}✓ Done${NC}"
+}
+
+install_base() {
+    echo -e "\n${CYAN}📦 Installing base system...${NC}"
+    echo -e "${YELLOW}(This will take several minutes)${NC}\n"
+    
+    pacstrap /mnt base base-devel linux linux-firmware \
+        networkmanager grub efibootmgr sudo vim nano git wget curl \
+        &> /tmp/lurin-install.log &
+    
+    local pid=$!
+    local spin='-\|/'
+    local i=0
+    while kill -0 $pid 2>/dev/null; do
+        i=$(( (i+1) %4 ))
+        printf "\r${BLUE}[${spin:$i:1}]${NC} Installing..."
+        sleep .2
+    done
+    echo -e "\r${GREEN}✓ Base system installed!${NC}"
+    play_sound "success"
+}
+
+install_gaming() {
+    echo -e "\n${CYAN}🎮 Installing gaming components...${NC}"
+    
+    arch-chroot /mnt pacman -S --noconfirm \
+        steam \
+        wine-staging winetricks \
+        vulkan-icd-loader vulkan-tools \
+        lib32-vulkan-icd-loader \
+        gamemode lib32-gamemode \
+        mangohud lib32-mangohud \
+        discord \
+        &>/dev/null
+    
+    # Для CS2 и других игр
+    arch-chroot /mnt pacman -S --noconfirm \
+        lib32-mesa \
+        lib32-libva-mesa-driver \
+        lib32-nvidia-utils \
+        &>/dev/null 2>&1 || true
+    
+    echo -e "${GREEN}✓ Gaming ready!${NC}"
+    play_sound "success"
+}
+
+configure_system() {
+    echo -e "\n${CYAN}⚙️  Configuring system...${NC}"
+    
+    genfstab -U /mnt >> /mnt/etc/fstab
+    
+    cat > /mnt/setup.sh << EOFCHROOT
+#!/bin/bash
+ln -sf /usr/share/zoneinfo/Europe/Moscow /etc/localtime
+hwclock --systohc
+
+echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen
+echo "ru_RU.UTF-8 UTF-8" >> /etc/locale.gen
+locale-gen &>/dev/null
+echo "LANG=ru_RU.UTF-8" > /etc/locale.conf
+
+echo "$HOSTNAME" > /etc/hostname
+cat > /etc/hosts << EOF
+127.0.0.1   localhost
+::1         localhost
+127.0.1.1   $HOSTNAME.localdomain $HOSTNAME
+EOF
+
+echo "root:$ROOT_PASSWORD" | chpasswd
+useradd -m -G wheel,audio,video,storage,games -s /bin/bash $USERNAME
+echo "$USERNAME:$USER_PASSWORD" | chpasswd
+sed -i 's/^# %wheel ALL=(ALL:ALL) ALL/%wheel ALL=(ALL:ALL) ALL/' /etc/sudoers
+
+# GRUB branding
+sed -i 's/GRUB_DISTRIBUTOR="Arch"/GRUB_DISTRIBUTOR="Lurin OS"/' /etc/default/grub
+sed -i 's/#GRUB_COLOR_NORMAL="light-gray\/black"/GRUB_COLOR_NORMAL="cyan\/blue"/' /etc/default/grub
+sed -i 's/#GRUB_COLOR_HIGHLIGHT="white\/blue"/GRUB_COLOR_HIGHLIGHT="white\/cyan"/' /etc/default/grub
+
+grub-install --target=x86_64-efi --efi-directory=/boot --bootloader-id=LurinOS &>/dev/null
+grub-mkconfig -o /boot/grub/grub.cfg &>/dev/null
+
+systemctl enable NetworkManager &>/dev/null
+EOFCHROOT
+
+    chmod +x /mnt/setup.sh
+    arch-chroot /mnt /setup.sh
+    rm /mnt/setup.sh
+    echo -e "${GREEN}✓ System configured${NC}"
+    play_sound "tick"
+}
+
+install_desktop() {
+    echo -e "\n${CYAN}🎨 Installing ${DESKTOP}...${NC}"
+    
+    case $DESKTOP in
+        plasma)
+            arch-chroot /mnt pacman -S --noconfirm xorg plasma sddm \
+                konsole dolphin kate spectacle gwenview \
+                firefox chromium \
+                vlc mpv \
+                gimp inkscape \
+                &>/dev/null
+            arch-chroot /mnt systemctl enable sddm &>/dev/null
+            
+            # KDE брендинг
+            mkdir -p /mnt/usr/share/sddm/themes/lurin
+            cat > /mnt/usr/share/sddm/themes/lurin/theme.conf << 'EOF'
+[General]
+background=/usr/share/backgrounds/lurin-wallpaper.jpg
+MainColor=#2196F3
+AccentColor=#00BCD4
+EOF
+            ;;
+        gnome)
+            arch-chroot /mnt pacman -S --noconfirm xorg gnome firefox &>/dev/null
+            arch-chroot /mnt systemctl enable gdm &>/dev/null
+            ;;
+        xfce)
+            arch-chroot /mnt pacman -S --noconfirm xorg xfce4 xfce4-goodies \
+                lightdm lightdm-gtk-greeter firefox &>/dev/null
+            arch-chroot /mnt systemctl enable lightdm &>/dev/null
+            ;;
+        hyprland)
+            # Hyprland + greetd (Wayland)
+            arch-chroot /mnt pacman -S --noconfirm \
+                hyprland waybar alacritty \
+                xdg-desktop-portal-hyprland xdg-desktop-portal-gtk \
+                seatd greetd \
+                wlogout \
+                firefox \
+                &>/dev/null
+
+            # Enable services
+            arch-chroot /mnt systemctl enable seatd.service &>/dev/null
+            arch-chroot /mnt systemctl enable greetd.service &>/dev/null
+
+            # Basic greetd config to auto-start Hyprland session
+            mkdir -p /mnt/etc/greetd
+            cat > /mnt/etc/greetd/config.toml << 'EOF'
+[terminal]
+vt = 1
+
+[default_session]
+command = "Hyprland"
+user = "greeter"
+EOF
+
+            # Create greeter user for greetd
+            arch-chroot /mnt bash -c 'id -u greeter &>/dev/null || useradd -M -N -r -s /usr/bin/nologin greeter'
+            ;;
+    esac
+    
+    echo -e "${GREEN}✓ Desktop installed${NC}"
+    play_sound "success"
+}
+
+install_extras() {
+    echo -e "${CYAN}📦 Installing additional packages...${NC}"
+    arch-chroot /mnt pacman -S --noconfirm \
+        ttf-dejavu ttf-liberation noto-fonts noto-fonts-emoji ttf-hack \
+        pulseaudio pulseaudio-alsa pavucontrol \
+        gvfs udisks2 ntfs-3g \
+        p7zip zip unzip unrar \
+        htop fastfetch btop \
+        obs-studio \
+        transmission-gtk \
+        &>/dev/null
+    echo -e "${GREEN}✓ Done${NC}"
+}
+
+setup_branding() {
+    echo -e "${CYAN}🎨 Applying Lurin OS branding...${NC}"
+    
+    # Создаем директории
+    mkdir -p /mnt/usr/share/backgrounds
+    mkdir -p /mnt/usr/share/pixmaps
+    mkdir -p /mnt/usr/share/sounds/lurin
+    mkdir -p /mnt/etc/lurin
+    mkdir -p /mnt/home/$USERNAME/.config/neofetch
+    mkdir -p /mnt/home/$USERNAME/.config/fastfetch
+    
+    # Информация о системе
+    cat > /mnt/etc/lurin/release << EOF
+LURIN_VERSION="1.0"
+LURIN_CODENAME="Gaming Edition"
+LURIN_BUILD_DATE="$(date +%Y-%m-%d)"
+EOF
+
+    # os-release для neofetch
+    cat > /mnt/etc/os-release << EOF
+NAME="Lurin OS"
+PRETTY_NAME="Lurin OS Gaming Edition"
+ID=lurin
+ID_LIKE=arch
+BUILD_ID=rolling
+ANSI_COLOR="38;2;33;150;243"
+HOME_URL="https://lurin-os.local"
+LOGO=lurin
+EOF
+
+    # neofetch конфиг
+    cat > /mnt/home/$USERNAME/.config/neofetch/config.conf << 'EOF'
+print_info() {
+    info title
+    info underline
+    info "OS" distro
+    info "Kernel" kernel
+    info "Uptime" uptime
+    info "Packages" packages
+    info "Shell" shell
+    info "DE" de
+    info "WM" wm
+    info "Terminal" term
+    info "CPU" cpu
+    info "GPU" gpu
+    info "Memory" memory
+    prin "Gaming" "Steam, Wine, Proton Ready"
+    info cols
+}
+EOF
+
+    # fastfetch конфиг с логотипом Lurin OS
+    cat > /mnt/home/$USERNAME/.config/fastfetch/config.jsonc << 'EOF'
+{
+  "logo": {
+    "type": "ascii",
+    "source": [
+      "██╗     ██╗   ██╗██████╗ ██╗███╗   ██╗",
+      "██║     ██║   ██║██╔══██╗██║████╗  ██║",
+      "██║     ██║   ██║██████╔╝██║██╔██╗ ██║",
+      "██║     ██║   ██║██╔══██╗██║██║╚██╗██║",
+      "███████╗╚██████╔╝██║  ██║██║██║ ╚████║",
+      "╚══════╝ ╚═════╝ ╚═╝  ╚═╝╚═╝╚═╝  ╚═══╝"
+    ]
+  },
+  "display": {
+    "color": "blue"
+  }
+}
+EOF
+    
+    arch-chroot /mnt chown -R $USERNAME:$USERNAME /home/$USERNAME
+    
+    echo -e "${GREEN}✓ Lurin OS branding applied${NC}"
+}
+
+main() {
+    show_logo
+    play_sound "startup"
+    echo -e "${BOLD}${CYAN}Welcome to Lurin OS Installer!${NC}\n"
+    echo -e "${GREEN}Gaming-optimized Linux distribution${NC}\n"
+    
+    check_root
+    check_internet
+    select_disk
+    get_user_info
+    select_desktop
+    
+    echo -e "\n${YELLOW}${BOLD}📋 Installation summary:${NC}"
+    echo -e "   Disk: ${BOLD}$DISK${NC}"
+    echo -e "   User: ${BOLD}$USERNAME${NC}"
+    echo -e "   Hostname: ${BOLD}$HOSTNAME${NC}"
+    echo -e "   Desktop: ${BOLD}$DESKTOP${NC}"
+    echo -e "   Gaming: ${GREEN}${BOLD}ENABLED${NC}"
+    echo -e "\n${CYAN}Press Enter to begin installation...${NC}"
+    read
+    
+    partition_disk
+    format_partitions
+    mount_partitions
+    install_base
+    configure_system
+    install_desktop
+    install_gaming
+    install_extras
+    setup_branding
+    
+    umount -R /mnt
+    
+    play_sound "complete"
+    echo -e "\n${GREEN}${BOLD}"
+    echo "╔═══════════════════════════════════════════════════╗"
+    echo "║                                                   ║"
+    echo "║          🎉 Installation Complete! 🎉            ║"
+    echo "║                                                   ║"
+    echo "║          Welcome to Lurin OS Gaming!             ║"
+    echo "║                                                   ║"
+    echo "║        Reboot with command: reboot               ║"
+    echo "║                                                   ║"
+    echo "╚═══════════════════════════════════════════════════╝"
+    echo -e "${NC}\n"
+    echo -e "${CYAN}Ready to play CS2, Roblox, and more!${NC}\n"
+}
+
+main

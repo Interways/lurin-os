@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lurin OS - Установка</title>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Exo+2:wght@300;600;900&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg: #0a0e27;
+            --bg-card: #141b3d;
+            --blue: #2196F3;
+            --cyan: #00BCD4;
+            --text: #e8f0f2;
+            --text-dim: #8b9bb3;
+            --glow: rgba(33, 150, 243, 0.3);
+        }
+
+        body {
+            font-family: 'JetBrains Mono', monospace;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.8;
+            overflow-x: hidden;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: 
+                radial-gradient(circle at 20% 30%, rgba(33, 150, 243, 0.1) 0%, transparent 40%),
+                radial-gradient(circle at 80% 70%, rgba(0, 188, 212, 0.08) 0%, transparent 40%);
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        .hero {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            padding: 2rem;
+            position: relative;
+        }
+
+        .logo-container {
+            position: relative;
+            margin-bottom: 2rem;
+        }
+
+        .logo-circle {
+            width: 200px;
+            height: 200px;
+            border-radius: 50%;
+            background: var(--blue);
+            border: 8px solid var(--text);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Exo 2', sans-serif;
+            font-size: 120px;
+            font-weight: 900;
+            color: white;
+            animation: pulse 3s ease-in-out infinite, float 6s ease-in-out infinite;
+            box-shadow: 0 20px 60px var(--glow);
+        }
+
+        @keyframes pulse {
+            0%, 100% { box-shadow: 0 20px 60px var(--glow); }
+            50% { box-shadow: 0 20px 80px rgba(33, 150, 243, 0.5); }
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-20px); }
+        }
+
+        .title {
+            font-family: 'Exo 2', sans-serif;
+            font-size: clamp(3rem, 8vw, 6rem);
+            font-weight: 900;
+            margin-bottom: 1rem;
+            background: linear-gradient(135deg, var(--blue), var(--cyan));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            letter-spacing: -2px;
+        }
+
+        .subtitle {
+            font-size: clamp(1.2rem, 3vw, 2rem);
+            color: var(--text-dim);
+            margin-bottom: 3rem;
+            font-weight: 300;
+        }
+
+        .cta {
+            display: inline-block;
+            padding: 1.2rem 3rem;
+            background: linear-gradient(135deg, var(--blue), var(--cyan));
+            color: white;
+            text-decoration: none;
+            border-radius: 50px;
+            font-weight: 700;
+            font-size: 1.1rem;
+            transition: all 0.3s ease;
+            box-shadow: 0 10px 40px var(--glow);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .cta::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+            transition: left 0.5s;
+        }
+
+        .cta:hover::before {
+            left: 100%;
+        }
+
+        .cta:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 50px rgba(33, 150, 243, 0.4);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 4rem 2rem;
+        }
+
+        .section-title {
+            font-family: 'Exo 2', sans-serif;
+            font-size: clamp(2rem, 5vw, 3.5rem);
+            font-weight: 600;
+            margin-bottom: 3rem;
+            text-align: center;
+            background: linear-gradient(135deg, var(--blue), var(--cyan));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .steps {
+            display: grid;
+            gap: 2rem;
+            counter-reset: step;
+        }
+
+        .step {
+            background: var(--bg-card);
+            border: 2px solid rgba(33, 150, 243, 0.2);
+            border-radius: 20px;
+            padding: 2.5rem;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+            counter-increment: step;
+        }
+
+        .step::before {
+            content: counter(step);
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, var(--blue), var(--cyan));
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Exo 2', sans-serif;
+            font-size: 2rem;
+            font-weight: 900;
+            color: white;
+            box-shadow: 0 5px 20px var(--glow);
+        }
+
+        .step::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(33, 150, 243, 0.1), transparent);
+            transition: left 0.6s;
+        }
+
+        .step:hover {
+            transform: translateX(10px);
+            border-color: var(--blue);
+            box-shadow: -10px 10px 40px rgba(33, 150, 243, 0.2);
+        }
+
+        .step:hover::after {
+            left: 100%;
+        }
+
+        .step-content {
+            padding-left: 90px;
+        }
+
+        .step-title {
+            font-family: 'Exo 2', sans-serif;
+            font-size: 1.8rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: var(--cyan);
+        }
+
+        .step-description {
+            color: var(--text-dim);
+            margin-bottom: 1rem;
+            line-height: 1.8;
+        }
+
+        .code-block {
+            background: #0d1117;
+            border: 1px solid rgba(33, 150, 243, 0.3);
+            border-radius: 10px;
+            padding: 1.5rem;
+            margin: 1rem 0;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.9rem;
+            color: var(--cyan);
+            overflow-x: auto;
+        }
+
+        .highlight {
+            color: var(--blue);
+            font-weight: 700;
+        }
+
+        .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 2rem;
+            margin-top: 3rem;
+        }
+
+        .feature {
+            background: var(--bg-card);
+            border: 2px solid rgba(33, 150, 243, 0.2);
+            border-radius: 15px;
+            padding: 2rem;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .feature:hover {
+            transform: translateY(-10px);
+            border-color: var(--blue);
+            box-shadow: 0 20px 40px rgba(33, 150, 243, 0.2);
+        }
+
+        .feature-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+
+        .feature-title {
+            font-family: 'Exo 2', sans-serif;
+            font-size: 1.3rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: var(--cyan);
+        }
+
+        .feature-text {
+            color: var(--text-dim);
+            font-size: 0.95rem;
+        }
+
+        .footer {
+            text-align: center;
+            padding: 3rem 2rem;
+            margin-top: 4rem;
+            border-top: 1px solid rgba(33, 150, 243, 0.2);
+        }
+
+        .footer-text {
+            color: var(--text-dim);
+            font-size: 0.9rem;
+        }
+
+        @media (max-width: 768px) {
+            .step-content {
+                padding-left: 0;
+                padding-top: 80px;
+            }
+
+            .step::before {
+                left: 50%;
+                transform: translateX(-50%);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="hero">
+        <div class="logo-container">
+            <div class="logo-circle">L</div>
+        </div>
+        <h1 class="title">LURIN OS</h1>
+        <p class="subtitle">🎮 Gaming Ready Linux Distribution</p>
+        <a href="#install" class="cta">Начать установку</a>
+    </div>
+
+    <div class="container" id="install">
+        <h2 class="section-title">Установка Lurin OS</h2>
+        
+        <div class="steps">
+            <div class="step">
+                <div class="step-content">
+                    <h3 class="step-title">Скачай ISO образ</h3>
+                    <p class="step-description">
+                        Собери ISO на совместимой Linux-системе или скачай готовый образ.
+                    </p>
+                    <div class="code-block">
+cd lurin-os<br>
+sudo ./build-iso.sh
+                    </div>
+                    <p class="step-description">
+                        ISO появится в <span class="highlight">~/lurin-iso/</span>
+                    </p>
+                </div>
+            </div>
+
+            <div class="step">
+                <div class="step-content">
+                    <h3 class="step-title">Запиши на USB флешку</h3>
+                    <p class="step-description">
+                        Используй dd (Linux/macOS) или Rufus (Windows).
+                    </p>
+                    <div class="code-block">
+sudo dd if=lurin-2025.iso of=/dev/sdX bs=4M status=progress && sync
+                    </div>
+                    <p class="step-description">
+                        ⚠️ Замени <span class="highlight">/dev/sdX</span> на твою флешку!<br>
+                        Проверь командой: <span class="highlight">lsblk</span>
+                    </p>
+                </div>
+            </div>
+
+            <div class="step">
+                <div class="step-content">
+                    <h3 class="step-title">Загрузись с флешки</h3>
+                    <p class="step-description">
+                        1. Вставь флешку в компьютер<br>
+                        2. Перезагрузись и зайди в Boot Menu<br>
+                        3. Обычно это клавиши: <span class="highlight">F12, F2, Del или Esc</span><br>
+                        4. Выбери USB флешку
+                    </p>
+                </div>
+            </div>
+
+            <div class="step">
+                <div class="step-content">
+                    <h3 class="step-title">Запусти установщик</h3>
+                    <p class="step-description">
+                        После загрузки live-системы введи команду:
+                    </p>
+                    <div class="code-block">
+lurininstall
+                    </div>
+                    <p class="step-description">
+                        Установщик проведет тебя через весь процесс!<br>
+                        ⏱️ Установка займет 15-30 минут.
+                    </p>
+                </div>
+            </div>
+
+            <div class="step">
+                <div class="step-content">
+                    <h3 class="step-title">Перезагрузись и играй!</h3>
+                    <p class="step-description">
+                        После установки:
+                    </p>
+                    <div class="code-block">
+reboot
+                    </div>
+                    <p class="step-description">
+                        Вынь флешку и загрузись с диска.<br>
+                        🎮 Готов играть в CS2, Roblox и другие игры!
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <h2 class="section-title">Особенности Lurin OS</h2>
+        
+        <div class="features">
+            <div class="feature">
+                <div class="feature-icon">🎮</div>
+                <h3 class="feature-title">Gaming Ready</h3>
+                <p class="feature-text">Steam, Wine, Proton, GameMode из коробки</p>
+            </div>
+
+            <div class="feature">
+                <div class="feature-icon">⚡</div>
+                <h3 class="feature-title">Супер быстрый</h3>
+                <p class="feature-text">Оптимизированное ядро Linux</p>
+            </div>
+
+            <div class="feature">
+                <div class="feature-icon">🎨</div>
+                <h3 class="feature-title">Красивый</h3>
+                <p class="feature-text">Современный дизайн и крутые обои</p>
+            </div>
+
+            <div class="feature">
+                <div class="feature-icon">🔊</div>
+                <h3 class="feature-title">Звуки</h3>
+                <p class="feature-text">Приятные звуковые эффекты</p>
+            </div>
+
+            <div class="feature">
+                <div class="feature-icon">🚀</div>
+                <h3 class="feature-title">Простая установка</h3>
+                <p class="feature-text">Одна команда - lurininstall</p>
+            </div>
+
+            <div class="feature">
+                <div class="feature-icon">🇷🇺</div>
+                <h3 class="feature-title">Русский язык</h3>
+                <p class="feature-text">Полная локализация</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="footer">
+        <p class="footer-text">
+            Lurin OS - Gaming Ready Linux Distribution<br>
+            🎮 Играй на Linux! 🎮
+        </p>
+    </div>
+
+    <script>
+        // Плавная прокрутка
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                document.querySelector(this.getAttribute('href')).scrollIntoView({
+                    behavior: 'smooth'
+                });
+            });
+        });
+
+        // Анимация появления элементов при прокрутке
+        const observerOptions = {
+            threshold: 0.1,
+            rootMargin: '0px 0px -100px 0px'
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.style.opacity = '1';
+                    entry.target.style.transform = 'translateY(0)';
+                }
+            });
+        }, observerOptions);
+
+        document.querySelectorAll('.step, .feature').forEach(el => {
+            el.style.opacity = '0';
+            el.style.transform = 'translateY(30px)';
+            el.style.transition = 'all 0.6s ease';
+            observer.observe(el);
+        });
+    </script>
+</body>
+</html>
