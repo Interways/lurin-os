@@ -13,8 +13,11 @@ jobs:
 
       - name: Build ISO inside privileged Arch container
         run: |
+          mkdir -p out
           docker run --rm --privileged \
             -v "${PWD}:/build" \
+            -v "${PWD}/out:/root/lurin-iso" \
+            -w /build \
             archlinux:latest \
             bash -lc '
               set -e
@@ -25,7 +28,6 @@ jobs:
               sed -i "s|#Include = /etc/pacman.d/mirrorlist|Include = /etc/pacman.d/mirrorlist|" /etc/pacman.conf || true
               pacman -Sy
 
-              cd /build
               chmod +x ./build-iso.sh
               ./build-iso.sh
             '
